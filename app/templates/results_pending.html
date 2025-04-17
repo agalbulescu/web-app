@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pipeline Running</title>
+    <script>
+        async function pollResults() {
+            const response = await fetch(`/results/{{ pipeline_id }}`);
+            const data = await response.json();
+            const container = document.getElementById("results");
+
+            if (data.status === "ready") {
+                container.innerHTML = `<h3>Test Results:</h3><pre>${data.summary}</pre>`;
+            } else if (data.status === "pending") {
+                setTimeout(pollResults, 5000);
+            } else {
+                container.innerHTML = `<p>Error: ${data.error}</p>`;
+            }
+        }
+
+        window.onload = pollResults;
+    </script>
+</head>
+<body>
+    <h2>Pipeline Triggered!</h2>
+    <p><strong>ID:</strong> {{ pipeline_id }}</p>
+    <p><strong>Status:</strong> {{ status }}</p>
+    <p><a href="{{ web_url }}" target="_blank">View in GitLab</a></p>
+
+    <div id="results">
+        <p>Waiting for test results...</p>
+    </div>
+</body>
+</html>

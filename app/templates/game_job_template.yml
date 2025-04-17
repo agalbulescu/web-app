@@ -1,0 +1,9 @@
+stage: test
+id_tokens:
+  GITLAB_OIDC_TOKEN:
+    aud: https://gitlab.mydomain.com
+tags:
+  - jenkins-huge
+image: escuxezg0/pypipe-debian:latest
+#artifacts:
+#  untracked: true

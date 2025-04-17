@@ -1,0 +1,10 @@
+services:
+  pypipe-web:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    container_name: pypipe-web
+    volumes:
+      - .:/app

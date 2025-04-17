@@ -1,0 +1,56 @@
+variables:
+  SELECTED_GAMES:
+    description: "Comma-separated list of games and suites to test (you can use multiple), e.g., game_01:all,game_04:smapp:mobile_ui,game_11:ui:payouts"
+
+.assume-role: &assume-role
+  - >
+    export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s"
+    $(aws sts assume-role-with-web-identity
+    --role-arn ${AWS_ROLE_ARN}
+    --role-session-name "GitLabRunner-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+    --web-identity-token $GITLAB_OIDC_TOKEN
+    --duration-seconds 36000
+    --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]'
+    --output text))
+
+stages:
+  - notify_pipeline_start
+  - test
+  - rerun_failed
+  - notify_pipeline_end
+
+notify_pipeline_start:
+  stage: notify_pipeline_start
+  image: alpine/curl:8.7.1
+  script:
+    - >
+      curl -X POST -H 'Content-type: application/json' --data '{
+        "text": "Pipeline for project *'$CI_PROJECT_NAME'* has started :rocket:.\nBranch: *'$CI_COMMIT_REF_NAME'*",
+        "channel": "'$SLACK_CHANNEL'",
+        "username": "gitlab-ci",
+        "icon_emoji": ":gitlab:"
+      }' $SLACK_WEBHOOK_URL
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+notify_pipeline_end:
+  stage: notify_pipeline_end
+  image: alpine/curl:8.7.1
+  script:
+    - |
+      if [ "$CI_JOB_STATUS" == "running" ]; then
+        curl -X POST -H 'Content-type: application/json' --data '{
+          "text": "Pipeline for project *'$CI_PROJECT_NAME'* finished successfully :white_check_mark:.\nBranch: *'$CI_COMMIT_REF_NAME'*",
+          "channel": "'$SLACK_CHANNEL'",
+          "username": "gitlab-ci",
+          "icon_emoji": ":gitlab:"
+        }' $SLACK_WEBHOOK_URL
+      else
+        curl -X POST -H 'Content-type: application/json' --data '{
+          "text": "Pipeline for project *'$CI_PROJECT_NAME'* failed :x:.\nBranch: *'$CI_COMMIT_REF_NAME'*",
+          "channel": "'$SLACK_CHANNEL'",
+          "username": "gitlab-ci",
+          "icon_emoji": ":gitlab:"
+        }' $SLACK_WEBHOOK_URL
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
